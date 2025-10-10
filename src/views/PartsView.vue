@@ -114,6 +114,8 @@ function addPart() {
   partName.value = ''
   partAmount.value = null
   amountInput.value = ''
+  // move dropdown to next unfilled component
+  componentType.value = getNextUnfilledComponent(componentType.value) || componentType.value
 }
 
 function removePart(index: number) {
@@ -137,6 +139,24 @@ function parseAmount(input: string): number {
   const normalized = decimals ? `${intPart}.${decimals.slice(0, 2)}` : intPart
   const n = Number(normalized)
   return Number.isFinite(n) ? n : 0
+}
+
+// Find the next component that has no selected name or zero amount
+function getNextUnfilledComponent(current: string): string | undefined {
+  // Priority 1: empty name
+  for (const opt of componentOptions) {
+    const entry = parts.value.find((p) => p.component === opt)
+    if (!entry || !entry.name) return opt
+  }
+  // Priority 2: zero amount
+  for (const opt of componentOptions) {
+    const entry = parts.value.find((p) => p.component === opt)
+    if (!entry || entry.amount === 0) return opt
+  }
+  // Fallback: next option cyclically after current
+  const idx = componentOptions.indexOf(current)
+  if (idx === -1) return componentOptions[0]
+  return componentOptions[(idx + 1) % componentOptions.length]
 }
 
 function formatAmountStringFromString(input: string): string {
