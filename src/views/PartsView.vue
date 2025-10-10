@@ -1,38 +1,72 @@
 <template>
   <div class="page-center">
     <div class="parts-container">
-      <h2>PC Parts Picker</h2>
-      <form @submit.prevent="addPart">
-        <select v-model="componentType">
-          <option v-for="opt in componentOptions" :key="opt" :value="opt">{{ opt }}</option>
-        </select>
-        <input v-model="partName" placeholder="Part Name (e.g., Ryzen 5 5600)" required />
-        <input
-          v-model="amountInput"
-          type="text"
-          inputmode="decimal"
-          placeholder="Amount"
-          @input="onAmountInput"
-          @blur="onAmountBlur"
-          required
+      <div class="header">
+        <h2>PC Parts Picker</h2>
+        <div class="user-actions">
+          <span class="user-info">{{ userEmail }}</span>
+          <button @click="handleLogout" class="logout-btn">Logout</button>
+        </div>
+      </div>
+
+      <!-- Error message -->
+      <div v-if="error" class="error-message">
+        {{ error }}
+        <button @click="error = null" class="error-close">×</button>
+      </div>
+
+      <!-- Loading state -->
+      <div v-if="loading" class="loading-message">Loading your parts...</div>
+
+      <!-- Main content -->
+      <div v-else>
+        <form @submit.prevent="addPart">
+          <select v-model="componentType">
+            <option v-for="opt in componentOptions" :key="opt" :value="opt">{{ opt }}</option>
+          </select>
+          <input v-model="partName" placeholder="Part Name (e.g., Ryzen 5 5600)" required />
+          <input
+            v-model="amountInput"
+            type="text"
+            inputmode="decimal"
+            placeholder="Amount"
+            @input="onAmountInput"
+            @blur="onAmountBlur"
+            required
+          />
+          <button type="submit">Add Part</button>
+        </form>
+        <SpecsTable
+          :parts="parts"
+          :currency="currency"
+          @remove="removePart"
+          @update="updatePart"
+          @reorder="reorderParts"
         />
-        <button type="submit">Add Part</button>
-      </form>
-      <SpecsTable
-        :parts="parts"
-        :currency="currency"
-        @remove="removePart"
-        @update="updatePart"
-        @reorder="reorderParts"
-      />
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import SpecsTable from '../components/SpecsTable.vue'
-// Pure localStorage for parts and currency
+import { db } from '../lib/database'
+import { supabase } from '../lib/supabase'
+
+const router = useRouter()
+const userEmail = ref('')
+
+const handleLogout = async () => {
+  try {
+    await supabase.auth.signOut()
+    router.push('/login')
+  } catch (error) {
+    console.error('Error logging out:', error)
+  }
+}
+
 const componentOptions = [
   'CPU',
   'GPU',
@@ -45,95 +79,159 @@ const componentOptions = [
   'Monitor',
   'Other',
 ]
+
 const componentType = ref<string>('CPU')
 const partName = ref('')
 const partAmount = ref<number | null>(null)
 const amountInput = ref('')
 const parts = ref<Array<{ component: string; name: string; amount: number }>>([])
 const currency = ref('PHP')
+const loading = ref(true)
+const error = ref<string | null>(null)
 
-const STORAGE_KEY = 'pcpicker.parts'
-const CURRENCY_KEY = 'pcpicker.currency'
-
-function loadFromStorage() {
+async function loadFromDatabase() {
   try {
-    const storedParts = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
-    if (Array.isArray(storedParts)) {
-      // migrate old schema without component -> set to 'Other'
-      parts.value = storedParts.map(
-        (p: { component?: string; name?: unknown; amount?: unknown }) => ({
-          component: typeof p.component === 'string' ? p.component : 'Other',
-          name: typeof p.name === 'string' ? p.name : String(p.name ?? ''),
-          amount: typeof p.amount === 'number' ? p.amount : Number(p.amount ?? 0),
-        }),
-      )
+    loading.value = true
+    error.value = null
+
+    // Get user email
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    userEmail.value = user?.email || 'Anonymous User'
+
+    // Load parts and currency from Supabase
+    const [dbParts, dbCurrency] = await Promise.all([db.getParts(), db.getCurrency()])
+
+    // Convert database parts to local format
+    parts.value = dbParts.map((p) => ({
+      component: p.component,
+      name: p.name === 'EMPTY' ? '' : p.name,
+      amount: p.amount,
+    }))
+
+    currency.value = dbCurrency
+
+    // If no parts exist, seed defaults
+    if (dbParts.length === 0) {
+      await db.seedDefaultParts()
+      // Reload after seeding
+      const seededParts = await db.getParts()
+      parts.value = seededParts.map((p) => ({
+        component: p.component,
+        name: p.name === 'EMPTY' ? '' : p.name,
+        amount: p.amount,
+      }))
     }
-    if (parts.value.length === 0) {
-      // seed defaults for common PC parts with no selected part name yet
-      parts.value = [
-        { component: 'CPU', name: '', amount: 0 },
-        { component: 'GPU', name: '', amount: 0 },
-        { component: 'Motherboard', name: '', amount: 0 },
-        { component: 'RAM', name: '', amount: 0 },
-        { component: 'Storage', name: '', amount: 0 },
-        { component: 'Power Supply', name: '', amount: 0 },
-        { component: 'Case', name: '', amount: 0 },
-        { component: 'CPU Cooler', name: '', amount: 0 },
-      ]
-    }
-    // Force currency to PHP as requested
-    currency.value = 'PHP'
-    saveToStorage()
-  } catch {
+  } catch (err) {
+    console.error('Error loading data:', err)
+    error.value = 'Failed to load data. Please refresh the page.'
+    // Fallback to empty state
     parts.value = []
     currency.value = 'PHP'
+  } finally {
+    loading.value = false
   }
 }
 
-function saveToStorage() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(parts.value))
-  localStorage.setItem(CURRENCY_KEY, currency.value)
+async function saveToDatabase() {
+  try {
+    // Update currency if it changed
+    await db.updateCurrency(currency.value)
+  } catch (err) {
+    console.error('Error saving currency:', err)
+  }
 }
 
-onMounted(loadFromStorage)
-watch(parts, saveToStorage, { deep: true })
-watch(currency, saveToStorage)
+onMounted(loadFromDatabase)
+watch(currency, saveToDatabase)
 
-function addPart() {
+async function addPart() {
   // parse from formatted input into number
   partAmount.value = parseAmount(amountInput.value)
   if (!partName.value || partAmount.value === null) return
-  const idx = parts.value.findIndex((p) => p.component === componentType.value)
-  const newEntry = {
-    component: componentType.value,
-    name: partName.value,
-    amount: partAmount.value,
+
+  try {
+    // Save to database
+    const savedPart = await db.savePart(componentType.value, partName.value, partAmount.value)
+
+    if (savedPart) {
+      // Update local state
+      const idx = parts.value.findIndex((p) => p.component === componentType.value)
+      const newEntry = {
+        component: componentType.value,
+        name: partName.value,
+        amount: partAmount.value,
+      }
+
+      if (idx !== -1) {
+        // Replace existing entry for this component
+        const next = [...parts.value]
+        next[idx] = newEntry
+        parts.value = next
+      } else {
+        parts.value = [...parts.value, newEntry]
+      }
+
+      // Clear form
+      partName.value = ''
+      partAmount.value = null
+      amountInput.value = ''
+
+      // move dropdown to next unfilled component
+      componentType.value = getNextUnfilledComponent(componentType.value) || componentType.value
+    }
+  } catch (err) {
+    console.error('Error adding part:', err)
+    error.value = 'Failed to save part. Please try again.'
   }
-  if (idx !== -1) {
-    // Replace existing entry for this component
-    const next = [...parts.value]
-    next[idx] = newEntry
-    parts.value = next
-  } else {
-    parts.value = [...parts.value, newEntry]
-  }
-  partName.value = ''
-  partAmount.value = null
-  amountInput.value = ''
-  // move dropdown to next unfilled component
-  componentType.value = getNextUnfilledComponent(componentType.value) || componentType.value
 }
 
-function removePart(index: number) {
-  parts.value = parts.value.filter((_, i) => i !== index)
+async function removePart(index: number) {
+  try {
+    const partToRemove = parts.value[index]
+    if (!partToRemove) return
+
+    // Find the database part ID
+    const dbParts = await db.getParts()
+    const dbPart = dbParts.find(
+      (p) =>
+        p.component === partToRemove.component &&
+        p.name === partToRemove.name &&
+        p.amount === partToRemove.amount,
+    )
+
+    if (dbPart) {
+      const success = await db.deletePart(dbPart.id)
+      if (success) {
+        // Update local state
+        parts.value = parts.value.filter((_, i) => i !== index)
+      }
+    }
+  } catch (err) {
+    console.error('Error removing part:', err)
+    error.value = 'Failed to remove part. Please try again.'
+  }
 }
 
-function updatePart(index: number, payload: { name: string; amount: number }) {
-  const next = [...parts.value]
-  const existing = next[index]
-  if (!existing) return
-  next[index] = { ...existing, name: payload.name, amount: payload.amount }
-  parts.value = next
+async function updatePart(index: number, payload: { name: string; amount: number }) {
+  try {
+    const existing = parts.value[index]
+    if (!existing) return
+
+    // Save to database
+    const savedPart = await db.savePart(existing.component, payload.name, payload.amount)
+
+    if (savedPart) {
+      // Update local state
+      const next = [...parts.value]
+      next[index] = { ...existing, name: payload.name, amount: payload.amount }
+      parts.value = next
+    }
+  } catch (err) {
+    console.error('Error updating part:', err)
+    error.value = 'Failed to update part. Please try again.'
+  }
 }
 
 function reorderParts(from: number, to: number) {
@@ -144,6 +242,9 @@ function reorderParts(from: number, to: number) {
   if (!moved) return
   next.splice(to, 0, moved)
   parts.value = next
+
+  // Note: Reordering is handled locally for now
+  // In a full implementation, you might want to add an 'order' field to the database
 }
 
 // Formatting helpers for amount input
@@ -212,6 +313,43 @@ function onAmountBlur() {
   display: flex;
   flex-direction: column;
 }
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.header h2 {
+  margin: 0;
+}
+
+.user-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-info {
+  color: #ccc;
+  font-size: 0.9rem;
+}
+
+.logout-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.logout-btn:hover {
+  background: #c82333;
+}
+
 h2 {
   text-align: center;
   margin-bottom: 18px;
@@ -249,5 +387,42 @@ button {
 }
 button:hover {
   background: #3766b6;
+}
+
+.error-message {
+  background: #ff4444;
+  color: white;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.error-close {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.error-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+.loading-message {
+  text-align: center;
+  padding: 40px;
+  color: #888;
+  font-size: 18px;
 }
 </style>
