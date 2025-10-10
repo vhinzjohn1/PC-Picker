@@ -1,6 +1,7 @@
 <template>
   <div class="specs-table">
-    <table>
+    <!-- Desktop Table View -->
+    <table class="desktop-table">
       <thead>
         <tr>
           <th>Component</th>
@@ -61,12 +62,7 @@
                   />
                 </svg>
               </button>
-              <button
-                class="icon-btn danger"
-                @click="cancelEdit"
-                aria-label="Cancel"
-                title="Cancel"
-              >
+              <button class="icon-btn" @click="cancelEdit" aria-label="Cancel" title="Cancel">
                 <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
                   <path
                     fill="none"
@@ -127,6 +123,134 @@
         </tr>
       </tfoot>
     </table>
+
+    <!-- Mobile Card View -->
+    <div class="mobile-cards">
+      <div
+        v-for="(part, idx) in parts"
+        :key="idx"
+        class="part-card"
+        draggable="true"
+        @dragstart="onDragStart(idx)"
+        @dragover.prevent
+        @drop="onDrop(idx)"
+      >
+        <div class="card-header">
+          <h3 class="component-name">{{ part.component || 'Other' }}</h3>
+          <div class="card-actions">
+            <template v-if="editIndex === idx">
+              <button
+                class="icon-btn success"
+                @click="saveEdit(idx)"
+                aria-label="Save"
+                title="Save"
+              >
+                <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                  <path
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M20 6L9 17l-5-5"
+                  />
+                </svg>
+              </button>
+              <button class="icon-btn" @click="cancelEdit" aria-label="Cancel" title="Cancel">
+                <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                  <path
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M6 6l12 12M18 6L6 18"
+                  />
+                </svg>
+              </button>
+            </template>
+            <template v-else>
+              <button
+                class="icon-btn"
+                @click="startEdit(idx, part.name, part.amount)"
+                aria-label="Edit"
+                title="Edit"
+              >
+                <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                  <path
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M12 20h9M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z"
+                  />
+                </svg>
+              </button>
+              <button
+                class="icon-btn danger"
+                @click="$emit('remove', idx)"
+                aria-label="Remove"
+                title="Remove"
+              >
+                <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                  <path
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M3 6h18M8 6l1-2h6l1 2m-1 0l-1 14H10L9 6"
+                  />
+                </svg>
+              </button>
+            </template>
+          </div>
+        </div>
+
+        <div class="card-content">
+          <div class="part-name-section">
+            <label class="field-label">Part Name</label>
+            <template v-if="editIndex === idx">
+              <input
+                v-model="editName"
+                placeholder="Select a specific model..."
+                class="card-input"
+              />
+            </template>
+            <template v-else>
+              <span v-if="part.name" class="part-name">{{ part.name }}</span>
+              <span v-else class="placeholder">Not selected yet</span>
+            </template>
+          </div>
+
+          <div class="amount-section">
+            <label class="field-label">Amount ({{ currency }})</label>
+            <template v-if="editIndex === idx">
+              <input
+                v-model="editAmountInput"
+                type="text"
+                inputmode="decimal"
+                @input="onInlineAmountInput"
+                @blur="onInlineAmountBlur"
+                class="card-input"
+              />
+            </template>
+            <template v-else>
+              <span class="amount-value">{{ formatAmount(part.amount) }}</span>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mobile Total -->
+      <div class="total-card">
+        <div class="total-content">
+          <span class="total-label">Total</span>
+          <span class="total-amount">{{ formatAmount(total) }}</span>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -228,32 +352,41 @@ export default {
   display: flex;
   justify-content: center;
 }
-table {
+
+/* Desktop Table Styles */
+.desktop-table {
   width: 90%;
   border-collapse: collapse;
   background: #222;
   color: #fff;
+  display: table;
 }
-th,
-td {
+
+.desktop-table th,
+.desktop-table td {
   padding: 10px;
   border-bottom: 1px solid #444;
 }
-th {
+
+.desktop-table th {
   background: #333;
 }
-tfoot td.total-cell {
+
+.desktop-table tfoot td.total-cell {
   text-align: right;
 }
-.amount-col,
-tbody td:nth-child(3) {
+
+.desktop-table .amount-col,
+.desktop-table tbody td:nth-child(3) {
   text-align: right;
 }
-tfoot td {
+
+.desktop-table tfoot td {
   background: #333;
   font-size: 1.1em;
 }
-.actions {
+
+.desktop-table .actions {
   width: 160px;
   display: flex;
   gap: 8px;
@@ -261,26 +394,8 @@ tfoot td {
   justify-content: flex-end;
   text-align: right;
 }
-.icon-btn {
-  padding: 6px 12px;
-  border-radius: 6px;
-  border: none;
-  background: transparent;
-  border: 1px solid #4f8cff;
-  color: #fff;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-.icon-btn:hover {
-  background: rgba(79, 140, 255, 0.15);
-}
-.icon-btn.danger {
-  border-color: #ff4f4f;
-}
-.icon-btn.danger:hover {
-  background: rgba(255, 79, 79, 0.15);
-}
-td input {
+
+.desktop-table td input {
   width: 100%;
   padding: 8px 10px;
   border-radius: 6px;
@@ -288,8 +403,212 @@ td input {
   background: #2a2a2a;
   color: #fff;
 }
+
+/* Mobile Card Styles */
+.mobile-cards {
+  display: none;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 500px;
+}
+
+.part-card {
+  background: #2a2a2a;
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid #444;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
+}
+
+.part-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #444;
+}
+
+.component-name {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.part-name-section,
+.amount-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #ccc;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.part-name {
+  font-size: 1rem;
+  color: #fff;
+  word-break: break-word;
+}
+
+.amount-value {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #4f8cff;
+}
+
+.card-input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #555;
+  background: #333;
+  color: #fff;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.card-input:focus {
+  outline: none;
+  border-color: #4f8cff;
+}
+
+.total-card {
+  background: #333;
+  border-radius: 12px;
+  padding: 20px;
+  border: 2px solid #4f8cff;
+  margin-top: 8px;
+}
+
+.total-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.total-label {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.total-amount {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #4f8cff;
+}
+
+/* Icon Button Styles */
+.icon-btn {
+  padding: 8px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  border: 1px solid #4f8cff;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-btn:hover {
+  background: rgba(79, 140, 255, 0.15);
+  transform: scale(1.05);
+}
+
+.icon-btn.success {
+  border-color: #28a745;
+}
+
+.icon-btn.success:hover {
+  background: rgba(40, 167, 69, 0.15);
+}
+
+.icon-btn.danger {
+  border-color: #ff4f4f;
+}
+
+.icon-btn.danger:hover {
+  background: rgba(255, 79, 79, 0.15);
+}
+
 .placeholder {
   color: #9aa0a6;
   font-style: italic;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .desktop-table {
+    display: none;
+  }
+
+  .mobile-cards {
+    display: flex;
+  }
+
+  .specs-table {
+    padding: 0 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .part-card {
+    padding: 12px;
+  }
+
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .card-actions {
+    align-self: flex-end;
+  }
+
+  .component-name {
+    font-size: 1rem;
+  }
+
+  .total-card {
+    padding: 16px;
+  }
+
+  .total-label {
+    font-size: 1.1rem;
+  }
+
+  .total-amount {
+    font-size: 1.3rem;
+  }
 }
 </style>

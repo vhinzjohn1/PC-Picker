@@ -3,7 +3,7 @@
     <div class="register-card">
       <h1 class="title">PC Picker</h1>
       <p class="subtitle">Create your account to sync builds across devices</p>
-      
+
       <form @submit.prevent="handleRegister" class="register-form">
         <div class="form-group">
           <label for="email">Email</label>
@@ -16,32 +16,98 @@
             class="form-input"
           />
         </div>
-        
+
         <div class="form-group">
           <label for="password">Password</label>
-          <input
-            id="password"
-            v-model="password"
-            type="password"
-            required
-            placeholder="Create a password"
-            class="form-input"
-            minlength="6"
-          />
+          <div class="password-input-container">
+            <input
+              id="password"
+              v-model="password"
+              :type="showPassword ? 'text' : 'password'"
+              required
+              placeholder="Create a password"
+              class="form-input password-input"
+              minlength="6"
+            />
+            <button
+              type="button"
+              @click="togglePasswordVisibility"
+              class="password-toggle"
+              :title="showPassword ? 'Hide password' : 'Show password'"
+            >
+              <svg
+                v-if="showPassword"
+                class="eye-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
+                />
+                <line x1="1" y1="1" x2="23" y2="23" />
+              </svg>
+              <svg
+                v-else
+                class="eye-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            </button>
+          </div>
         </div>
-        
+
         <div class="form-group">
           <label for="confirmPassword">Confirm Password</label>
-          <input
-            id="confirmPassword"
-            v-model="confirmPassword"
-            type="password"
-            required
-            placeholder="Confirm your password"
-            class="form-input"
-          />
+          <div class="password-input-container">
+            <input
+              id="confirmPassword"
+              v-model="confirmPassword"
+              :type="showConfirmPassword ? 'text' : 'password'"
+              required
+              placeholder="Confirm your password"
+              class="form-input password-input"
+            />
+            <button
+              type="button"
+              @click="toggleConfirmPasswordVisibility"
+              class="password-toggle"
+              :title="showConfirmPassword ? 'Hide password' : 'Show password'"
+            >
+              <svg
+                v-if="showConfirmPassword"
+                class="eye-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
+                />
+                <line x1="1" y1="1" x2="23" y2="23" />
+              </svg>
+              <svg
+                v-else
+                class="eye-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            </button>
+          </div>
         </div>
-        
+
         <div class="form-group">
           <label for="username">Username</label>
           <input
@@ -53,25 +119,25 @@
             class="form-input"
           />
         </div>
-        
+
         <button type="submit" :disabled="loading || !isFormValid" class="register-btn">
           {{ loading ? 'Creating Account...' : 'Create Account' }}
         </button>
       </form>
-      
+
       <div class="divider">
         <span>or</span>
       </div>
-      
+
       <button @click="handleAnonymousLogin" :disabled="loading" class="anonymous-btn">
         Continue as Guest
       </button>
-      
+
       <p class="login-link">
-        Already have an account? 
+        Already have an account?
         <router-link to="/login" class="link">Sign in</router-link>
       </p>
-      
+
       <div v-if="error" class="error-message">
         {{ error }}
       </div>
@@ -91,14 +157,26 @@ const confirmPassword = ref('')
 const username = ref('')
 const loading = ref(false)
 const error = ref('')
+const showPassword = ref(false)
+const showConfirmPassword = ref(false)
+
+const togglePasswordVisibility = () => {
+  showPassword.value = !showPassword.value
+}
+
+const toggleConfirmPasswordVisibility = () => {
+  showConfirmPassword.value = !showConfirmPassword.value
+}
 
 const isFormValid = computed(() => {
-  return email.value && 
-         password.value && 
-         confirmPassword.value && 
-         username.value &&
-         password.value === confirmPassword.value &&
-         password.value.length >= 6
+  return (
+    email.value &&
+    password.value &&
+    confirmPassword.value &&
+    username.value &&
+    password.value === confirmPassword.value &&
+    password.value.length >= 6
+  )
 })
 
 const handleRegister = async () => {
@@ -106,29 +184,27 @@ const handleRegister = async () => {
     error.value = 'Please fill in all fields correctly'
     return
   }
-  
+
   loading.value = true
   error.value = ''
-  
+
   try {
     // Sign up with Supabase
     const { data, error: authError } = await supabase.auth.signUp({
       email: email.value,
       password: password.value,
     })
-    
+
     if (authError) {
       error.value = authError.message
     } else if (data.user) {
       // Create user profile
-      const { error: profileError } = await supabase
-        .from('user_profiles')
-        .insert({
-          id: data.user.id,
-          username: username.value,
-          currency: 'PHP',
-        })
-      
+      const { error: profileError } = await supabase.from('user_profiles').insert({
+        id: data.user.id,
+        username: username.value,
+        currency: 'PHP',
+      })
+
       if (profileError) {
         console.error('Error creating profile:', profileError)
         error.value = 'Account created but profile setup failed. Please try logging in.'
@@ -147,10 +223,10 @@ const handleRegister = async () => {
 const handleAnonymousLogin = async () => {
   loading.value = true
   error.value = ''
-  
+
   try {
     const { data, error: authError } = await supabase.auth.signInAnonymously()
-    
+
     if (authError) {
       error.value = authError.message
     } else {
@@ -171,17 +247,18 @@ const handleAnonymousLogin = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--color-background);
   padding: 20px;
 }
 
 .register-card {
-  background: white;
+  background: var(--vt-c-black-soft);
   border-radius: 16px;
   padding: 40px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
   width: 100%;
   max-width: 400px;
+  border: 1px solid var(--color-border);
 }
 
 .title {
@@ -189,15 +266,12 @@ const handleAnonymousLogin = async () => {
   font-weight: bold;
   text-align: center;
   margin-bottom: 8px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--color-heading);
 }
 
 .subtitle {
   text-align: center;
-  color: #666;
+  color: var(--color-text);
   margin-bottom: 32px;
   font-size: 1rem;
 }
@@ -214,40 +288,79 @@ const handleAnonymousLogin = async () => {
   display: block;
   margin-bottom: 8px;
   font-weight: 500;
-  color: #333;
+  color: var(--color-heading);
 }
 
 .form-input {
   width: 100%;
   padding: 12px 16px;
-  border: 2px solid #e1e5e9;
+  border: 2px solid var(--color-border);
   border-radius: 8px;
   font-size: 1rem;
   transition: border-color 0.2s;
   box-sizing: border-box;
+  background: var(--color-background-mute);
+  color: var(--color-text);
 }
 
 .form-input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: hsla(160, 100%, 37%, 1);
+}
+
+.form-input::placeholder {
+  color: var(--color-text);
+  opacity: 0.6;
+}
+
+.password-input-container {
+  position: relative;
+}
+
+.password-input {
+  padding-right: 50px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: var(--color-text);
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.password-toggle:hover {
+  opacity: 1;
+}
+
+.eye-icon {
+  width: 20px;
+  height: 20px;
 }
 
 .register-btn {
   width: 100%;
   padding: 14px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: hsla(160, 100%, 37%, 1);
   color: white;
   border: none;
   border-radius: 8px;
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: all 0.2s;
 }
 
 .register-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+  background: hsla(160, 100%, 30%, 1);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .register-btn:disabled {
@@ -268,13 +381,13 @@ const handleAnonymousLogin = async () => {
   left: 0;
   right: 0;
   height: 1px;
-  background: #e1e5e9;
+  background: var(--color-border);
 }
 
 .divider span {
-  background: white;
+  background: var(--vt-c-black-soft);
   padding: 0 16px;
-  color: #666;
+  color: var(--color-text);
   font-size: 0.9rem;
 }
 
@@ -282,8 +395,8 @@ const handleAnonymousLogin = async () => {
   width: 100%;
   padding: 14px;
   background: transparent;
-  color: #667eea;
-  border: 2px solid #667eea;
+  color: var(--color-text);
+  border: 2px solid var(--color-border);
   border-radius: 8px;
   font-size: 1rem;
   font-weight: 600;
@@ -293,8 +406,8 @@ const handleAnonymousLogin = async () => {
 }
 
 .anonymous-btn:hover:not(:disabled) {
-  background: #667eea;
-  color: white;
+  background: var(--color-border);
+  color: var(--color-heading);
 }
 
 .anonymous-btn:disabled {
@@ -304,12 +417,12 @@ const handleAnonymousLogin = async () => {
 
 .login-link {
   text-align: center;
-  color: #666;
+  color: var(--color-text);
   font-size: 0.9rem;
 }
 
 .link {
-  color: #667eea;
+  color: hsla(160, 100%, 37%, 1);
   text-decoration: none;
   font-weight: 600;
 }
@@ -319,12 +432,12 @@ const handleAnonymousLogin = async () => {
 }
 
 .error-message {
-  background: #fee;
-  color: #c33;
+  background: rgba(220, 53, 69, 0.1);
+  color: #ff6b6b;
   padding: 12px;
   border-radius: 8px;
   margin-top: 16px;
   font-size: 0.9rem;
-  border: 1px solid #fcc;
+  border: 1px solid rgba(220, 53, 69, 0.3);
 }
 </style>

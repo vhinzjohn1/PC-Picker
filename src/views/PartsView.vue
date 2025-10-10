@@ -305,6 +305,7 @@ function onAmountBlur() {
 }
 .parts-container {
   width: 900px;
+  max-width: 100%;
   padding: 32px;
   background: var(--parts-bg, #222);
   border-radius: 16px;
@@ -312,6 +313,19 @@ function onAmountBlur() {
   color: #fff;
   display: flex;
   flex-direction: column;
+}
+
+@media (max-width: 768px) {
+  .parts-container {
+    width: 100%;
+    padding: 20px;
+    border-radius: 12px;
+    margin: 0 16px;
+  }
+
+  .page-center {
+    padding: 16px;
+  }
 }
 .header {
   display: flex;
@@ -350,6 +364,36 @@ function onAmountBlur() {
   background: #c82333;
 }
 
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .header h2 {
+    font-size: 1.5rem;
+  }
+
+  .user-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .user-info {
+    font-size: 0.8rem;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .logout-btn {
+    padding: 10px 16px;
+    font-size: 0.9rem;
+  }
+}
+
 h2 {
   text-align: center;
   margin-bottom: 18px;
@@ -360,6 +404,21 @@ form {
   gap: 12px;
   margin-bottom: 24px;
   align-items: center;
+}
+
+@media (max-width: 768px) {
+  form {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  form select,
+  form input,
+  form button {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
 }
 select {
   padding: 10px;
