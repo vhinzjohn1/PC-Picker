@@ -18,7 +18,13 @@
         />
         <button type="submit">Add Part</button>
       </form>
-      <SpecsTable :parts="parts" :currency="currency" @remove="removePart" @update="updatePart" />
+      <SpecsTable
+        :parts="parts"
+        :currency="currency"
+        @remove="removePart"
+        @update="updatePart"
+        @reorder="reorderParts"
+      />
     </div>
   </div>
 </template>
@@ -127,6 +133,16 @@ function updatePart(index: number, payload: { name: string; amount: number }) {
   const existing = next[index]
   if (!existing) return
   next[index] = { ...existing, name: payload.name, amount: payload.amount }
+  parts.value = next
+}
+
+function reorderParts(from: number, to: number) {
+  if (from === to) return
+  const next = [...parts.value]
+  const removed = next.splice(from, 1)
+  const moved = removed[0]
+  if (!moved) return
+  next.splice(to, 0, moved)
   parts.value = next
 }
 

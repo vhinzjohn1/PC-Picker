@@ -10,7 +10,14 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="(part, idx) in parts" :key="idx">
+        <tr
+          v-for="(part, idx) in parts"
+          :key="idx"
+          draggable="true"
+          @dragstart="onDragStart(idx)"
+          @dragover.prevent
+          @drop="onDrop(idx)"
+        >
           <td>{{ part.component || 'Other' }}</td>
           <td>
             <template v-if="editIndex === idx">
@@ -141,6 +148,7 @@ function formatAmount(value: number) {
 const editIndex = ref<number | null>(null)
 const editName = ref('')
 const editAmount = ref<number | null>(null)
+const dragIndex = ref<number | null>(null)
 const editAmountInput = ref('')
 
 function startEdit(index: number, name: string, amount: number) {
@@ -195,7 +203,17 @@ function onInlineAmountBlur() {
 const emit = defineEmits<{
   (e: 'remove', index: number): void
   (e: 'update', index: number, payload: { name: string; amount: number }): void
+  (e: 'reorder', from: number, to: number): void
 }>()
+
+function onDragStart(index: number) {
+  dragIndex.value = index
+}
+function onDrop(targetIndex: number) {
+  if (dragIndex.value === null || dragIndex.value === targetIndex) return
+  emit('reorder', dragIndex.value, targetIndex)
+  dragIndex.value = null
+}
 </script>
 
 <script lang="ts">
