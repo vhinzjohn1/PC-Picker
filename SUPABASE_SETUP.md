@@ -31,7 +31,20 @@ const supabaseAnonKey = 'your-anon-key' // Your anon key
 
 ## Step 4: Create Database Tables
 
-In your Supabase dashboard, go to SQL Editor and run this SQL to create the required tables:
+In your Supabase dashboard, go to SQL Editor and run the SQL from the `DATABASE_SETUP.sql` file in your project root. This will create all the required tables including:
+
+- `user_profiles` - User information and preferences
+- `parts` - Individual PC components
+- `pc_setups` - Saved PC configurations
+- `setup_parts` - Parts belonging to each setup
+
+The script includes:
+- All necessary tables with proper relationships
+- Row Level Security (RLS) policies for data protection
+- Indexes for optimal performance
+- Automatic timestamp updates
+
+Alternatively, you can run the individual table creation scripts:
 
 ```sql
 -- Create user_profiles table
@@ -54,9 +67,32 @@ CREATE TABLE parts (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Create pc_setups table
+CREATE TABLE pc_setups (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+  total_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create setup_parts table
+CREATE TABLE setup_parts (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  setup_id UUID REFERENCES pc_setups(id) ON DELETE CASCADE NOT NULL,
+  component TEXT NOT NULL,
+  name TEXT NOT NULL,
+  amount DECIMAL(10,2) NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Enable Row Level Security for better data protection
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE parts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pc_setups ENABLE ROW LEVEL SECURITY;
+ALTER TABLE setup_parts ENABLE ROW LEVEL SECURITY;
 
 -- Create RLS policies for user_profiles
 CREATE POLICY "Users can view own profile" ON user_profiles

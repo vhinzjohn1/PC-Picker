@@ -9,6 +9,22 @@
         </div>
       </div>
 
+      <!-- Navigation -->
+      <div class="navigation">
+        <router-link to="/" class="nav-link active">
+          <svg viewBox="0 0 24 24" width="20" height="20">
+            <path fill="currentColor" d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+          </svg>
+          Parts Builder
+        </router-link>
+        <router-link to="/setups" class="nav-link">
+          <svg viewBox="0 0 24 24" width="20" height="20">
+            <path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+          </svg>
+          My Setups
+        </router-link>
+      </div>
+
       <!-- Error message -->
       <div v-if="error" class="error-message">
         {{ error }}
@@ -394,6 +410,38 @@ function onAmountBlur() {
   }
 }
 
+.navigation {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 32px;
+  padding: 16px;
+  background: #2a2a2a;
+  border-radius: 12px;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: transparent;
+  color: #ccc;
+  text-decoration: none;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.nav-link:hover {
+  background: #333;
+  color: #fff;
+}
+
+.nav-link.active {
+  background: #4f8cff;
+  color: #fff;
+}
+
 h2 {
   text-align: center;
   margin-bottom: 18px;
@@ -407,6 +455,11 @@ form {
 }
 
 @media (max-width: 768px) {
+  .navigation {
+    flex-direction: column;
+    gap: 8px;
+  }
+
   form {
     grid-template-columns: 1fr;
     gap: 16px;

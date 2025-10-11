@@ -27,3 +27,22 @@ export interface UserProfile {
   created_at: string
   updated_at: string
 }
+
+export interface PCSetup {
+  id: string
+  user_id: string
+  name: string
+  description?: string
+  total_amount: number
+  created_at: string
+  updated_at: string
+}
+
+export interface SetupPart {
+  id: string
+  setup_id: string
+  component: string
+  name: string
+  amount: number
+  created_at: string
+}

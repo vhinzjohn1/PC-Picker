@@ -1,49 +1,148 @@
-# vue-project
+# PC-Picker
 
-This template should help get you started developing with Vue 3 in Vite.
+A modern web application for building and managing PC configurations with cross-device synchronization.
 
-## Recommended IDE Setup
+## Features
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+### 🖥️ PC Parts Builder
+- Add, edit, and manage PC components (CPU, GPU, Motherboard, RAM, etc.)
+- Real-time cost calculation with multiple currency support
+- Drag-and-drop reordering of components
+- Responsive design with mobile-friendly interface
 
-## Recommended Browser Setup
+### 💾 PC Setups Management
+- Save complete PC configurations as named setups
+- Compare different builds side-by-side
+- Load saved setups back into the parts builder
+- Expandable details view for each setup
+- Delete and manage multiple setups
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd) 
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
+### 🔐 User Authentication
+- Secure login/register system powered by Supabase
+- Cross-device data synchronization
+- User-specific data isolation with Row Level Security
 
-## Type Support for `.vue` Imports in TS
+### 💰 Multi-Currency Support
+- Support for USD, EUR, JPY, PHP
+- Automatic currency formatting
+- User preference persistence
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
+## Tech Stack
 
-## Customize configuration
-
-See [Vite Configuration Reference](https://vite.dev/config/).
+- **Frontend**: Vue 3 + TypeScript + Vite
+- **Backend**: Supabase (PostgreSQL + Auth + Real-time)
+- **Styling**: CSS3 with modern design patterns
+- **State Management**: Vue Composition API
+- **Routing**: Vue Router 4
 
 ## Project Setup
 
+### Prerequisites
+- Node.js 20.19.0 or higher
+- A Supabase account
+
+### Installation
+
+1. Clone the repository
+```sh
+git clone <repository-url>
+cd PC-Picker
+```
+
+2. Install dependencies
 ```sh
 npm install
 ```
 
-### Compile and Hot-Reload for Development
+3. Set up Supabase (see [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) for detailed instructions)
+   - Create a new Supabase project
+   - Update `src/lib/supabase.ts` with your project credentials
+   - Run the SQL script from `DATABASE_SETUP.sql` in your Supabase SQL Editor
 
+4. Start the development server
 ```sh
 npm run dev
 ```
 
-### Type-Check, Compile and Minify for Production
+## Database Schema
+
+The application uses the following main tables:
+
+- **user_profiles**: User information and currency preferences
+- **parts**: Individual PC components for the current build
+- **pc_setups**: Saved PC configurations
+- **setup_parts**: Parts belonging to each saved setup
+
+## Usage
+
+### Building a PC
+1. Navigate to the Parts Builder
+2. Select a component type from the dropdown
+3. Enter the part name and price
+4. Add more components as needed
+5. View the total cost in real-time
+
+### Saving Setups
+1. Build your PC configuration in the Parts Builder
+2. Go to the Setups page
+3. Enter a name and optional description
+4. Click "Save Setup"
+
+### Managing Setups
+- View all saved setups in a grid layout
+- Click "Show Parts" to see detailed component breakdown
+- Use "Load" to restore a setup to the Parts Builder
+- Delete setups you no longer need
+
+## Development
+
+### Available Scripts
 
 ```sh
+# Development server
+npm run dev
+
+# Build for production
 npm run build
-```
 
-### Lint with [ESLint](https://eslint.org/)
+# Type checking
+npm run type-check
 
-```sh
+# Linting
 npm run lint
+
+# Formatting
+npm run format
 ```
-# PC-Picker
+
+### Project Structure
+
+```
+src/
+├── components/          # Reusable Vue components
+│   ├── icons/          # SVG icon components
+│   └── SpecsTable.vue  # Main parts table component
+├── lib/                # Database and API utilities
+│   ├── database.ts     # Database service layer
+│   └── supabase.ts     # Supabase client and types
+├── router/             # Vue Router configuration
+├── store/              # State management
+├── views/              # Page components
+│   ├── PartsView.vue   # Parts builder page
+│   ├── SetupsView.vue  # Setups management page
+│   ├── LoginView.vue   # Authentication pages
+│   └── RegisterView.vue
+└── main.ts             # Application entry point
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests and linting
+5. Submit a pull request
+
+## License
+
+This project is licensed under the MIT License.
