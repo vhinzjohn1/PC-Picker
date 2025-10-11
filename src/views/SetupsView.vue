@@ -13,13 +13,16 @@
       <div class="navigation">
         <router-link to="/" class="nav-link">
           <svg viewBox="0 0 24 24" width="20" height="20">
-            <path fill="currentColor" d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+            <path fill="currentColor" d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
           </svg>
           Parts Builder
         </router-link>
         <router-link to="/setups" class="nav-link active">
           <svg viewBox="0 0 24 24" width="20" height="20">
-            <path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+            <path
+              fill="currentColor"
+              d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"
+            />
           </svg>
           My Setups
         </router-link>
@@ -58,20 +61,14 @@
                 placeholder="Description (optional)"
                 class="setup-desc-input"
               />
-              <button type="submit" class="save-btn" :disabled="!canSaveSetup">
-                Save Setup
-              </button>
+              <button type="submit" class="save-btn" :disabled="!canSaveSetup">Save Setup</button>
             </div>
           </form>
         </div>
 
         <!-- Setups Grid -->
         <div v-if="setups.length > 0" class="setups-grid">
-          <div
-            v-for="setup in setups"
-            :key="setup.id"
-            class="setup-card"
-          >
+          <div v-for="setup in setups" :key="setup.id" class="setup-card">
             <div class="setup-header">
               <h3 class="setup-name">{{ setup.name }}</h3>
               <div class="setup-actions">
@@ -81,7 +78,10 @@
                   title="Load this setup"
                 >
                   <svg viewBox="0 0 24 24" width="16" height="16">
-                    <path fill="currentColor" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                    <path
+                      fill="currentColor"
+                      d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+                    />
                   </svg>
                 </button>
                 <button
@@ -90,7 +90,7 @@
                   title="Delete setup"
                 >
                   <svg viewBox="0 0 24 24" width="16" height="16">
-                    <path fill="currentColor" d="M3 6h18M8 6l1-2h6l1 2m-1 0l-1 14H10L9 6"/>
+                    <path fill="currentColor" d="M3 6h18M8 6l1-2h6l1 2m-1 0l-1 14H10L9 6" />
                   </svg>
                 </button>
               </div>
@@ -104,17 +104,12 @@
               <div v-if="setup.description" class="setup-description">
                 {{ setup.description }}
               </div>
-              <div class="setup-date">
-                Created {{ formatDate(setup.created_at) }}
-              </div>
+              <div class="setup-date">Created {{ formatDate(setup.created_at) }}</div>
             </div>
 
             <!-- Expandable Parts List -->
             <div class="setup-parts">
-              <button
-                @click="toggleSetupDetails(setup.id)"
-                class="toggle-details-btn"
-              >
+              <button @click="toggleSetupDetails(setup.id)" class="toggle-details-btn">
                 <span>{{ expandedSetups.has(setup.id) ? 'Hide' : 'Show' }} Parts</span>
                 <svg
                   :class="{ rotated: expandedSetups.has(setup.id) }"
@@ -122,28 +117,22 @@
                   width="16"
                   height="16"
                 >
-                  <path fill="currentColor" d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
+                  <path
+                    fill="currentColor"
+                    d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"
+                  />
                 </svg>
               </button>
 
-              <div
-                v-if="expandedSetups.has(setup.id)"
-                class="parts-details"
-              >
+              <div v-if="expandedSetups.has(setup.id)" class="parts-details">
                 <div v-if="setupParts[setup.id]?.length > 0" class="parts-list">
-                  <div
-                    v-for="part in setupParts[setup.id]"
-                    :key="part.id"
-                    class="part-item"
-                  >
+                  <div v-for="part in setupParts[setup.id]" :key="part.id" class="part-item">
                     <span class="part-component">{{ part.component }}</span>
                     <span class="part-name">{{ part.name || 'Not specified' }}</span>
                     <span class="part-amount">{{ formatAmount(part.amount) }}</span>
                   </div>
                 </div>
-                <div v-else class="no-parts">
-                  No parts found for this setup
-                </div>
+                <div v-else class="no-parts">No parts found for this setup</div>
               </div>
             </div>
           </div>
@@ -153,14 +142,15 @@
         <div v-else class="empty-state">
           <div class="empty-icon">
             <svg viewBox="0 0 24 24" width="64" height="64">
-              <path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+              <path
+                fill="currentColor"
+                d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"
+              />
             </svg>
           </div>
           <h3>No setups saved yet</h3>
           <p>Build your PC parts and save them as a setup to get started!</p>
-          <router-link to="/" class="cta-btn">
-            Go to Parts Builder
-          </router-link>
+          <router-link to="/" class="cta-btn"> Go to Parts Builder </router-link>
         </div>
       </div>
     </div>
@@ -232,10 +222,7 @@ async function loadSetups() {
     userEmail.value = user?.email || 'Anonymous User'
 
     // Load setups and currency
-    const [dbSetups, dbCurrency] = await Promise.all([
-      db.getSetups(),
-      db.getCurrency(),
-    ])
+    const [dbSetups, dbCurrency] = await Promise.all([db.getSetups(), db.getCurrency()])
 
     setups.value = dbSetups
     currency.value = dbCurrency
@@ -259,7 +246,7 @@ async function saveCurrentSetup() {
     }
 
     // Convert to the format expected by createSetup
-    const partsData = currentParts.map(part => ({
+    const partsData = currentParts.map((part) => ({
       component: part.component,
       name: part.name === 'EMPTY' ? '' : part.name,
       amount: part.amount,
@@ -268,7 +255,7 @@ async function saveCurrentSetup() {
     const setup = await db.createSetup(
       newSetupName.value.trim(),
       newSetupDescription.value.trim(),
-      partsData
+      partsData,
     )
 
     if (setup) {
@@ -514,6 +501,26 @@ onMounted(() => {
   display: flex;
   gap: 16px;
   align-items: flex-end;
+}
+
+@media (max-width: 768px) {
+  .form-row {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .setup-name-input,
+  .setup-desc-input {
+    width: 100%;
+    min-width: 0; /* Allow flex items to shrink below their content size */
+    box-sizing: border-box;
+  }
+
+  .save-btn {
+    width: 100%;
+    margin-top: 8px;
+  }
 }
 
 .setup-name-input,
@@ -812,11 +819,6 @@ onMounted(() => {
   .navigation {
     flex-direction: column;
     gap: 8px;
-  }
-
-  .form-row {
-    flex-direction: column;
-    gap: 12px;
   }
 
   .setups-grid {
