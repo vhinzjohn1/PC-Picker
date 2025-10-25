@@ -63,7 +63,7 @@ export class DatabaseService {
         .from('parts')
         .select('*')
         .eq('user_id', this.userId)
-        .order('created_at', { ascending: true })
+        .order('sort_order', { ascending: true }) // <--- changed from created_at
 
       if (error) {
         console.error('Error fetching parts:', error)
@@ -77,12 +77,16 @@ export class DatabaseService {
     }
   }
 
-  // Add or update a part
-  async savePart(component: string, name: string, amount: number): Promise<Part | null> {
+  // Add or update a part (now can set sort_order)
+  async savePart(
+    component: string,
+    name: string,
+    amount: number,
+    sort_order?: number,
+  ): Promise<Part | null> {
     await this.ensureUser()
 
     try {
-      // Check if part with this component already exists
       const { data: existingPart } = await supabase
         .from('parts')
         .select('*')
@@ -91,13 +95,13 @@ export class DatabaseService {
         .single()
 
       if (existingPart) {
-        // Update existing part
         const { data, error } = await supabase
           .from('parts')
           .update({
             name,
             amount,
             updated_at: new Date().toISOString(),
+            ...(sort_order !== undefined ? { sort_order } : {}),
           })
           .eq('id', existingPart.id)
           .select()
@@ -110,7 +114,6 @@ export class DatabaseService {
 
         return data
       } else {
-        // Create new part
         const { data, error } = await supabase
           .from('parts')
           .insert({
@@ -118,6 +121,7 @@ export class DatabaseService {
             component,
             name,
             amount,
+            ...(sort_order !== undefined ? { sort_order } : {}),
           })
           .select()
           .single()
@@ -132,6 +136,26 @@ export class DatabaseService {
     } catch (err) {
       console.error('Error in savePart:', err)
       return null
+    }
+  }
+
+  // Batch update sort_order for parts
+  async updatePartOrders(parts: { id: string; sort_order: number }[]): Promise<boolean> {
+    await this.ensureUser()
+    const updates = parts.map((part) => ({
+      id: part.id,
+      sort_order: part.sort_order,
+    }))
+    try {
+      const { error } = await supabase.from('parts').upsert(updates, { onConflict: 'id' })
+      if (error) {
+        console.error('Error updating part order:', error)
+        return false
+      }
+      return true
+    } catch (err) {
+      console.error('Error in updatePartOrders:', err)
+      return false
     }
   }
 
@@ -260,7 +284,11 @@ export class DatabaseService {
     }
   }
 
-  async createSetup(name: string, description: string, parts: Array<{ component: string; name: string; amount: number }>): Promise<PCSetup | null> {
+  async createSetup(
+    name: string,
+    description: string,
+    parts: Array<{ component: string; name: string; amount: number }>,
+  ): Promise<PCSetup | null> {
     await this.ensureUser()
 
     try {
@@ -288,16 +316,14 @@ export class DatabaseService {
       }
 
       // Add parts to the setup
-      const setupParts = parts.map(part => ({
+      const setupParts = parts.map((part) => ({
         setup_id: setup.id,
         component: part.component,
         name: part.name,
         amount: part.amount,
       }))
 
-      const { error: partsError } = await supabase
-        .from('setup_parts')
-        .insert(setupParts)
+      const { error: partsError } = await supabase.from('setup_parts').insert(setupParts)
 
       if (partsError) {
         console.error('Error adding parts to setup:', partsError)
@@ -347,22 +373,17 @@ export class DatabaseService {
       }
 
       // Clear current parts
-      await supabase
-        .from('parts')
-        .delete()
-        .eq('user_id', this.userId)
+      await supabase.from('parts').delete().eq('user_id', this.userId)
 
       // Add setup parts to current parts
-      const currentParts = setupParts.map(part => ({
+      const currentParts = setupParts.map((part) => ({
         user_id: this.userId!,
         component: part.component,
         name: part.name,
         amount: part.amount,
       }))
 
-      const { error } = await supabase
-        .from('parts')
-        .insert(currentParts)
+      const { error } = await supabase.from('parts').insert(currentParts)
 
       if (error) {
         console.error('Error loading setup to current parts:', error)
@@ -410,7 +431,12 @@ export class DatabaseService {
     }
   }
 
-  async updateSetup(setupId: string, name: string, description: string, parts: Array<{ component: string; name: string; amount: number }>): Promise<boolean> {
+  async updateSetup(
+    setupId: string,
+    name: string,
+    description: string,
+    parts: Array<{ component: string; name: string; amount: number }>,
+  ): Promise<boolean> {
     await this.ensureUser()
 
     try {
@@ -446,16 +472,14 @@ export class DatabaseService {
       }
 
       // Add new parts
-      const setupParts = parts.map(part => ({
+      const setupParts = parts.map((part) => ({
         setup_id: setupId,
         component: part.component,
         name: part.name,
         amount: part.amount,
       }))
 
-      const { error: partsError } = await supabase
-        .from('setup_parts')
-        .insert(setupParts)
+      const { error: partsError } = await supabase.from('setup_parts').insert(setupParts)
 
       if (partsError) {
         console.error('Error adding new setup parts:', partsError)

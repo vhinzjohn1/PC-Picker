@@ -39,6 +39,7 @@ In your Supabase dashboard, go to SQL Editor and run the SQL from the `DATABASE_
 - `setup_parts` - Parts belonging to each setup
 
 The script includes:
+
 - All necessary tables with proper relationships
 - Row Level Security (RLS) policies for data protection
 - Indexes for optimal performance
@@ -169,6 +170,50 @@ CREATE POLICY "Users can update own parts" ON parts
 CREATE POLICY "Users can delete own parts" ON parts
   FOR DELETE USING (auth.uid() = user_id);
 ```
+
+### Add `sort_order` column to support drag-and-drop part ordering
+
+If you are upgrading, run these SQL migration steps (no data will be lost):
+
+```sql
+ALTER TABLE parts ADD COLUMN IF NOT EXISTS sort_order INT;
+
+DO $$
+DECLARE
+  r RECORD;
+  i INT := 0;
+BEGIN
+  FOR r IN SELECT id FROM parts ORDER BY created_at ASC
+  LOOP
+    UPDATE parts SET sort_order = i WHERE id = r.id;
+    i := i + 1;
+  END LOOP;
+END $$;
+```
+
+**Update permissions:**
+
+```sql
+-- Allow updates for own parts, including sort_order
+DROP POLICY IF EXISTS "Users can update own parts" ON parts;
+CREATE POLICY "Users can update own parts" ON parts
+  FOR UPDATE USING (auth.uid() = user_id);
+```
+
+**Update `Part` table definition:**
+
+| Column     | Type      | Description                     |
+| ---------- | --------- | ------------------------------- |
+| id         | UUID      | Primary key                     |
+| user_id    | UUID      | Foreign key (auth.users)        |
+| component  | TEXT      | Component type                  |
+| name       | TEXT      | Part name                       |
+| amount     | DECIMAL   | Part price/amount               |
+| created_at | TIMESTAMP | Record creation timestamp       |
+| updated_at | TIMESTAMP | Last updated timestamp          |
+| sort_order | INT       | Order of part for drag-and-drop |
+
+After running the above, your app and the database will fully support saving and restoring part order for each user.
 
 ## Step 7: Test Your Setup
 

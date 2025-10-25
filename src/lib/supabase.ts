@@ -18,6 +18,7 @@ export interface Part {
   amount: number
   created_at: string
   updated_at: string
+  sort_order: number // <--- Added to support persistent ordering
 }
 
 export interface UserProfile {

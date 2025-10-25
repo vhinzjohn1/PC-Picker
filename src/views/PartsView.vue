@@ -184,13 +184,16 @@ async function addPart() {
   partAmount.value = parseAmount(amountInput.value)
   if (!partName.value || partAmount.value === null) return
   try {
-    const savedPart = await db.savePart(componentType.value, partName.value, partAmount.value)
+    const savedPart = await db.savePart(
+      componentType.value,
+      partName.value,
+      partAmount.value,
+      parts.value.length,
+    )
     if (savedPart) {
       const idx = parts.value.findIndex((p) => p.component === componentType.value)
       const newEntry = {
-        component: componentType.value,
-        name: partName.value,
-        amount: partAmount.value,
+        ...savedPart, // Must include id and sort_order for correct future ordering!
       }
       if (idx !== -1) {
         const next = [...parts.value]
@@ -252,15 +255,22 @@ async function updatePart(index: number, payload: { name: string; amount: number
   }
 }
 
-function reorderParts(from: number, to: number) {
+async function reorderParts(from: number, to: number) {
   if (from === to) return
   const next = [...parts.value]
   const removed = next.splice(from, 1)
   const moved = removed[0]
   if (!moved) return
   next.splice(to, 0, moved)
-  parts.value = next
-  updateCache()
+  // Set correct sort_order for each part
+  const toSave = next.map((p, idx) => ({ id: (p as any).id, sort_order: idx }))
+  const ok = await db.updatePartOrders(toSave)
+  if (ok) {
+    parts.value = next
+    updateCache()
+  } else {
+    error.value = 'Failed to save new order. Try again!'
+  }
 }
 // Formatting helpers for amount input
 function parseAmount(input: string): number {
