@@ -215,6 +215,54 @@ CREATE POLICY "Users can update own parts" ON parts
 
 After running the above, your app and the database will fully support saving and restoring part order for each user.
 
+## Database Backup and Disaster Recovery (Parts Table)
+
+### 1. Backup Before Migration
+
+```sql
+CREATE TABLE IF NOT EXISTS _parts_backup AS TABLE parts;
+```
+
+### 2. Reset and Migrate Parts Table (with sort_order)
+
+```sql
+-- Drop all policies for parts
+DROP POLICY IF EXISTS "Users can view own parts" ON parts;
+DROP POLICY IF EXISTS "Users can insert own parts" ON parts;
+DROP POLICY IF EXISTS "Users can update own parts" ON parts;
+DROP POLICY IF EXISTS "Users can delete own parts" ON parts;
+DROP TABLE IF EXISTS parts;
+CREATE TABLE parts (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) NOT NULL,
+  component TEXT NOT NULL,
+  name TEXT NOT NULL,
+  amount DECIMAL(10,2) NOT NULL,
+  sort_order INT DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+ALTER TABLE parts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view own parts" ON parts FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own parts" ON parts FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own parts" ON parts FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own parts" ON parts FOR DELETE USING (auth.uid() = user_id);
+CREATE INDEX IF NOT EXISTS idx_parts_user_id ON parts(user_id);
+CREATE INDEX IF NOT EXISTS idx_parts_sort_order ON parts(user_id, sort_order);
+```
+
+### 3. Restore Data (after reset)
+
+```sql
+INSERT INTO parts (id, user_id, component, name, amount, sort_order, created_at, updated_at)
+SELECT id, user_id, component, name, amount,
+  COALESCE(sort_order, ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY created_at))::INT,
+  created_at, updated_at
+FROM _parts_backup;
+```
+
+-- Now your database is robust and upgrade-proof!
+
 ## Step 7: Test Your Setup
 
 1. Run your Vue app: `npm run dev`

@@ -212,6 +212,15 @@ async function loadSetup(setupId: string) {
     const success = await db.loadSetupToCurrentParts(setupId)
     if (success) {
       successMessage.value = 'Setup loaded successfully!'
+      // Refresh local cache so Parts page reflects the newly loaded setup.
+      try {
+        const freshParts = await db.getParts()
+        localStorage.setItem('pcPartsV1', JSON.stringify(freshParts))
+      } catch (e) {
+        console.error('Error refreshing local parts cache after loading setup:', e)
+        // If this fails, clear the cache so Parts page will fetch from server
+        localStorage.removeItem('pcPartsV1')
+      }
       router.push('/')
     } else {
       error.value = 'Failed to load setup. Please try again.'

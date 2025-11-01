@@ -1,8 +1,29 @@
-import { supabase, type Part, type UserProfile, type PCSetup, type SetupPart } from './supabase'
+import { supabase, type Part, type PCSetup, type SetupPart } from './supabase'
+
+// Local types for localStorage fallback
+type LocalPart = {
+  id: string
+  user_id?: string
+  component?: string
+  name?: string
+  amount?: number
+  created_at?: string
+  updated_at?: string
+  sort_order?: number
+}
+
+type LocalUser = {
+  id: string
+  username?: string
+  password?: string
+  currency?: string
+  parts?: LocalPart[]
+}
 
 // Database operations for PC parts
 export class DatabaseService {
   private userId: string | null = null
+  private useLocalFallback = false
 
   constructor() {
     // Get current user ID from Supabase auth
@@ -12,6 +33,7 @@ export class DatabaseService {
     supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
         this.userId = session.user.id
+        this.useLocalFallback = false
       } else {
         this.userId = null
       }
@@ -27,10 +49,52 @@ export class DatabaseService {
 
   // Ensure user is authenticated
   async ensureUser(): Promise<string> {
-    if (this.userId) return this.userId
+    if (this.userId) return this.userId as string
 
-    // If no user is logged in, redirect to login
+    // try to refresh supabase user
+    try {
+      await this.getCurrentUserId()
+    } catch {
+      // ignore
+    }
+
+    if (this.userId) return this.userId as string
+
+    // Fallback: check localStorage 'user' (used by local auth)
+    try {
+      const stored = localStorage.getItem('user')
+      if (stored) {
+        const u = JSON.parse(stored)
+        if (u?.id) {
+          this.userId = u.id
+          this.useLocalFallback = true
+          return this.userId as string
+        }
+      }
+    } catch {
+      // ignore
+    }
+
     throw new Error('User not authenticated')
+  }
+
+  // LocalStorage helpers for fallback mode
+
+  private getLocalUsers(): LocalUser[] {
+    try {
+      return JSON.parse(localStorage.getItem('users') || '[]') as LocalUser[]
+    } catch {
+      return []
+    }
+  }
+
+  private saveLocalUsers(users: LocalUser[]) {
+    localStorage.setItem('users', JSON.stringify(users))
+  }
+
+  private getLocalUserById(id: string) {
+    const users = this.getLocalUsers()
+    return users.find((u) => u.id === id) || null
   }
 
   // Create user profile (simplified)
@@ -58,12 +122,27 @@ export class DatabaseService {
   async getParts(): Promise<Part[]> {
     await this.ensureUser()
 
+    if (this.useLocalFallback) {
+      const local = this.getLocalUserById(this.userId!)
+      if (!local) return []
+      return (local.parts || []).map((p, idx) => ({
+        id: p.id || `${this.userId}-${idx}`,
+        user_id: this.userId!,
+        component: p.component || 'component',
+        name: p.name || '',
+        amount: Number(p.amount) || 0,
+        created_at: p.created_at || new Date().toISOString(),
+        updated_at: p.updated_at || new Date().toISOString(),
+        sort_order: typeof p.sort_order === 'number' ? p.sort_order : idx,
+      }))
+    }
+
     try {
       const { data, error } = await supabase
         .from('parts')
         .select('*')
         .eq('user_id', this.userId)
-        .order('sort_order', { ascending: true }) // <--- changed from created_at
+        .order('sort_order', { ascending: true })
 
       if (error) {
         console.error('Error fetching parts:', error)
@@ -85,6 +164,37 @@ export class DatabaseService {
     sort_order?: number,
   ): Promise<Part | null> {
     await this.ensureUser()
+
+    if (this.useLocalFallback) {
+      const users = this.getLocalUsers()
+      const idx = users.findIndex((u) => u.id === this.userId)
+      if (idx === -1) return null
+      const user = users[idx] as LocalUser
+      user.parts = user.parts || []
+      const existing = user.parts.find((p) => p.component === component)
+      if (existing) {
+        existing.name = name
+        existing.amount = amount
+        if (sort_order !== undefined) existing.sort_order = sort_order
+        existing.updated_at = new Date().toISOString()
+      } else {
+        const newPart = {
+          id: Math.random().toString(36).slice(2),
+          user_id: this.userId!,
+          component,
+          name,
+          amount,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          sort_order: sort_order ?? user.parts.length,
+        }
+        user.parts.push(newPart)
+      }
+      users[idx] = user
+      this.saveLocalUsers(users)
+      const saved = user.parts.find((p) => p.component === component)
+      return saved as unknown as Part
+    }
 
     try {
       const { data: existingPart } = await supabase
@@ -140,21 +250,43 @@ export class DatabaseService {
   }
 
   // Batch update sort_order for parts
-  async updatePartOrders(parts: { id: string; sort_order: number }[]): Promise<boolean> {
+  async updatePartOrders(
+    parts: {
+      id: string
+      user_id: string
+      component: string
+      name: string
+      amount: number
+      sort_order: number
+    }[],
+  ): Promise<boolean> {
     await this.ensureUser()
     const updates = parts.map((part) => ({
       id: part.id,
+      user_id: part.user_id,
+      component: part.component,
+      name: part.name,
+      amount: part.amount,
       sort_order: part.sort_order,
     }))
     try {
-      const { error } = await supabase.from('parts').upsert(updates, { onConflict: 'id' })
+      const { error, status } = await supabase.from('parts').upsert(updates, { onConflict: 'id' })
       if (error) {
-        console.error('Error updating part order:', error)
+        console.error('[updatePartOrders] Update failed', {
+          userId: this.userId,
+          updates,
+          status,
+          supabaseError: error,
+        })
         return false
       }
       return true
     } catch (err) {
-      console.error('Error in updatePartOrders:', err)
+      console.error('[updatePartOrders] Threw exception:', {
+        userId: this.userId,
+        updates,
+        errorObj: err,
+      })
       return false
     }
   }
@@ -162,6 +294,22 @@ export class DatabaseService {
   // Delete a part
   async deletePart(partId: string): Promise<boolean> {
     await this.ensureUser()
+
+    if (this.useLocalFallback) {
+      try {
+        const users = this.getLocalUsers()
+        const idx = users.findIndex((u) => u.id === this.userId)
+        if (idx === -1) return false
+        const localUser = users[idx] as LocalUser
+        localUser.parts = (localUser.parts || []).filter((p) => p.id !== partId)
+        users[idx] = localUser
+        this.saveLocalUsers(users)
+        return true
+      } catch (e) {
+        console.error('Error deleting part (local):', e)
+        return false
+      }
+    }
 
     try {
       const { error } = await supabase
@@ -185,6 +333,22 @@ export class DatabaseService {
   // Update user currency
   async updateCurrency(currency: string): Promise<boolean> {
     await this.ensureUser()
+
+    if (this.useLocalFallback) {
+      try {
+        const users = this.getLocalUsers()
+        const idx = users.findIndex((u) => u.id === this.userId)
+        if (idx === -1) return false
+        const localUser = users[idx] as LocalUser
+        localUser.currency = currency
+        users[idx] = localUser
+        this.saveLocalUsers(users)
+        return true
+      } catch (e) {
+        console.error('Error updating currency (local):', e)
+        return false
+      }
+    }
 
     try {
       const { error } = await supabase
@@ -211,6 +375,11 @@ export class DatabaseService {
   // Get user currency
   async getCurrency(): Promise<string> {
     await this.ensureUser()
+
+    if (this.useLocalFallback) {
+      const local = this.getLocalUserById(this.userId!)
+      return local?.currency || 'PHP'
+    }
 
     try {
       const { data, error } = await supabase

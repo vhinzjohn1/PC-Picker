@@ -64,6 +64,7 @@ import SpecsTable from '../components/SpecsTable.vue'
 import { db } from '../lib/database'
 import { supabase } from '../lib/supabase'
 import AppLayout from '../components/AppLayout.vue'
+import type { Part } from '../lib/supabase'
 
 // --- CACHE KEYS ---
 const LS_PARTS = 'pcPartsV1'
@@ -92,7 +93,7 @@ const componentType = ref<string>('CPU')
 const partName = ref('')
 const partAmount = ref<number | null>(null)
 const amountInput = ref('')
-const parts = ref<Array<{ component: string; name: string; amount: number }>>([])
+const parts = ref<Part[]>([])
 const currency = ref('PHP')
 
 /**
@@ -133,21 +134,18 @@ async function backgroundFetchUserAndParts() {
     userEmailLoading.value = false
     //--- parts/currency
     const [dbParts, dbCurrency] = await Promise.all([db.getParts(), db.getCurrency()])
-    parts.value = dbParts.map((p) => ({
-      component: p.component,
-      name: p.name === 'EMPTY' ? '' : p.name,
-      amount: p.amount,
-    }))
+    // If there's a local cached parts list (LS_PARTS), keep that ordering/values
+    const partsJson = localStorage.getItem(LS_PARTS)
+    if (!partsJson) {
+      // Preserve ALL part fields from database (id, sort_order, etc)
+      parts.value = dbParts
+    }
     currency.value = dbCurrency
-    // If no parts exist, seed defaults
+    // If no parts exist, seed defaults (and assign result directly)
     if (dbParts.length === 0) {
       await db.seedDefaultParts()
       const seededParts = await db.getParts()
-      parts.value = seededParts.map((p) => ({
-        component: p.component,
-        name: p.name === 'EMPTY' ? '' : p.name,
-        amount: p.amount,
-      }))
+      parts.value = seededParts
     }
     updateCache() // Save latest to cache after any successful fetch
   } catch (err) {
@@ -200,6 +198,10 @@ async function addPart() {
         next[idx] = newEntry
         parts.value = next
       } else {
+        // assign a local sort_order if missing
+        if (newEntry.sort_order === undefined || newEntry.sort_order === null) {
+          newEntry.sort_order = parts.value.length
+        }
         parts.value = [...parts.value, newEntry]
       }
       partName.value = ''
@@ -262,15 +264,9 @@ async function reorderParts(from: number, to: number) {
   const moved = removed[0]
   if (!moved) return
   next.splice(to, 0, moved)
-  // Set correct sort_order for each part
-  const toSave = next.map((p, idx) => ({ id: (p as any).id, sort_order: idx }))
-  const ok = await db.updatePartOrders(toSave)
-  if (ok) {
-    parts.value = next
-    updateCache()
-  } else {
-    error.value = 'Failed to save new order. Try again!'
-  }
+  // Persist ordering in local cache only (no server call)
+  parts.value = next.map((p, idx) => ({ ...p, sort_order: idx }))
+  updateCache()
 }
 // Formatting helpers for amount input
 function parseAmount(input: string): number {

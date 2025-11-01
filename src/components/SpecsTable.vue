@@ -13,7 +13,7 @@
       <tbody>
         <tr
           v-for="(part, idx) in parts"
-          :key="idx"
+          :key="part.id || idx"
           draggable="true"
           @dragstart="onDragStart(idx)"
           @dragover.prevent
@@ -128,7 +128,7 @@
     <div class="mobile-cards">
       <div
         v-for="(part, idx) in parts"
-        :key="idx"
+        :key="part.id || idx"
         class="part-card"
         draggable="true"
         @dragstart="onDragStart(idx)"
@@ -257,10 +257,8 @@
 <script setup lang="ts">
 import { defineProps, computed } from 'vue'
 import { ref } from 'vue'
-const props = defineProps<{
-  parts: { component?: string; name: string; amount: number }[]
-  currency: string
-}>()
+import type { Part } from '../lib/supabase'
+const props = defineProps<{ parts: Part[]; currency: string }>()
 const total = computed(() => props.parts.reduce((sum, p) => sum + p.amount, 0))
 const formatter = computed(
   () => new Intl.NumberFormat('en-PH', { style: 'currency', currency: props.currency }),
